@@ -1,5 +1,14 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {start} from './worker.mjs';
+test('health endpoint supports GET and HEAD only',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'webgpt-worker-health-test-'));const s=await start({dir,port:0,controlPort:0});
+ try{
+  const url='http://127.0.0.1:'+s.mcpPort+'/health';
+  const get=await fetch(url);assert.equal(get.status,200);assert.deepEqual(await get.json(),{ok:true,name:'WebGPT Worker'});
+  const head=await fetch(url,{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
+  for(const method of ['POST','PUT','DELETE']){const r=await fetch(url,{method});assert.equal(r.status,405);assert.equal(r.headers.get('allow'),'GET, HEAD');}
+ }finally{await s.close();rmSync(dir,{recursive:true});}
+});
 test('private tasks, completion notification, persistence, retry and backup removal',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'webgpt-worker-test-'));let s=await start({dir,port:0,controlPort:0,backupMs:10});
  try{

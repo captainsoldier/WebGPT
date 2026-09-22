@@ -93,7 +93,11 @@ export async function start({dir,port=43137,controlPort=43139,publicMcp=false,ba
   };
   const mcp=createServer(async(req,res)=>{
     if(req.headers.origin)return json(res,403,{});
-    if(req.method==='GET'&&req.url==='/health')return json(res,200,{ok:true,name:'WebGPT Worker'});
+    if(req.url==='/health'){
+      if(req.method==='GET')return json(res,200,{ok:true,name:'WebGPT Worker'});
+      if(req.method==='HEAD'){res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});return res.end();}
+      res.setHeader('allow','GET, HEAD');return json(res,405,{});
+    }
     await expireIdle();
     const openToken=(req.url??'').match(/^\/open\/([a-f0-9]{64})$/)?.[1];
     const openTask=openToken&&tasks.find(t=>t.mode==='open'&&t.status==='running'&&t.openKey===openToken&&t.token);
